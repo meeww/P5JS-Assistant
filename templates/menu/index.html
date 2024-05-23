@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Menu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 50%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .project-list {
+            margin-top: 20px;
+        }
+        .project-list a {
+            display: block;
+            margin-bottom: 10px;
+            color: blue;
+            text-decoration: none;
+        }
+        .project-list a:hover {
+            text-decoration: underline;
+        }
+        .new-project {
+            margin-top: 20px;
+        }
+        .new-project input {
+            padding: 10px;
+            width: calc(100% - 22px);
+        }
+        .new-project button {
+            padding: 10px;
+            width: 100%;
+            margin-top: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .new-project button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Your Projects</h1>
+        <div class="project-list" id="project-list">
+            <!-- Project links will be injected here by JavaScript -->
+            {% for project in projects %}
+                <a href="/projects/{{ project }}/src/index.html">{{ project }}</a>
+            {% endfor %}
+        </div>
+
+        <div class="new-project">
+            <h2>Create a New Project</h2>
+            <input type="text" id="project-name" placeholder="Enter project name">
+            <button onclick="createProject()">Create New Project</button>
+        </div>
+    </div>
+
+    <script>
+        function createProject() {
+            var projectName = document.getElementById('project-name').value;
+            if (projectName) {
+                fetch('/create_project', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ project_name: projectName })
+                }).then(response => response.json()).then(data => {
+                    alert(data.message);
+                    if (data.message === 'Project created successfully') {
+                        window.location.reload();
+                    }
+                });
+            } else {
+                alert('Please enter a project name.');
+            }
+        }
+    </script>
+</body>
+</html>

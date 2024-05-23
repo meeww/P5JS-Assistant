@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/browserfs"></script>
+    <title>Code Executor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <script src="https://kit.fontawesome.com/6a108fd5aa.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div id="popup"></div>
+    <div id="card">
+        <h1>Code</h1>
+        <div class="horizontal">
+            <div id="container" style="width: 30%;">
+                <h3>Directory</h3>
+                <ul id="directory_list">
+                  
+                </ul>
+            </div>
+            <div id="container">
+                <div class="control_overlay">
+                    <a id="download_file" title="Download the currently active file."><i class="fa-solid fa-download"></i></a>
+                    <a id="open_file" title="Open file in new tab"><i class="fa-solid fa-magnifying-glass"></i></a>
+                    <a id="copy_file" title="Copy file text to clipboard"><i class="fa-solid fa-copy"></i></a>
+                    <a id="upload_file" title="Upload file"><i class="fa-solid fa-upload"></i></a>
+                </div>
+                <h3>Editor<span id="filename"></span></h3>
+                <textarea id="code" spellcheck="false" placeholder="Write your code here."></textarea>
+
+            </div>
+        </div>
+    </div>
+    
+    <div id="card">
+        <h1>Submit Code</h1>
+        <form id="form" class="horizontal">
+            <label for="image_checkbox" title="Request screenshot">Image:
+                <input type="checkbox" id="image_checkbox" name="image_checkbox" value="image">
+                <span class="checkmark"></span>
+            </label>
+            <label for="video_checkbox" title="Request video recording">Video:
+                <input type="checkbox" id="video_checkbox" name="video_checkbox" value="video">
+                <span class="checkmark"></span>
+            </label>
+            <label for="log_checkbox" title="Request console log">Log:
+                <input type="checkbox" id="log_checkbox" name="log_checkbox" value="log">
+                <span class="checkmark"></span>
+            </label>
+            <label for="iframe_checkbox" title="Request interactive page">Iframe:
+                <input type="checkbox" id="iframe_checkbox" name="iframe_checkbox" value="iframe">
+                <span class="checkmark"></span>
+            </label>
+      
+            <div id="submit">
+                <button type="submit">Submit</button>
+            </div>
+            <div id="spinner"></div>
+        </form>
+    </div>
+    <div id="card">
+        <h1>Outputs</h1>
+        <div id="grid">
+            <div id="container">
+                <h3>Image Screenshot</h3>
+                <img id="image" alt="Screenshot">
+                <div class="control_overlay">
+                    <a id="download_image" title="Download screenshot as .png"><i class="fa-solid fa-download"></i></a>
+                    <a id="open_image" title="Open image in new tab"><i class="fa-solid fa-magnifying-glass"></i></a>
+                    <a id="copy_image" title="Copy image to clipboard"><i class="fa-solid fa-copy"></i></a>
+                </div>
+            </div>
+            <div id="container">
+                <h3>Video Recording</h3>
+                <video id="video" controls></video>
+                <div class="control_overlay">
+                    <a id="download_video" title="Download video as .webm"><i class="fa-solid fa-download"></i></a>
+                    <a id="open_video" title="Open video in new tab"><i class="fa-solid fa-magnifying-glass"></i></a>
+                    <a id="copy_video" title="Copy video url to clipboard"><i class="fa-solid fa-copy"></i></a>
+                </div>
+            </div>
+            <div id="container">
+                <!-- bullet point ascii code: &#8226; -->
+                <h3>Console Log</h3>
+                <span id="log"></span>
+                <div class="control_overlay">
+                    <a id="download_log" title="Download logs as .txt"><i class="fa-solid fa-download"></i></a>
+                    <a id="open_log" title="Open logs in new tab"><i class="fa-solid fa-magnifying-glass"></i></a>
+                    <a id="copy_log" title="Copy logs to clipboard"><i class="fa-solid fa-copy"></i></a>
+                </div>
+            </div>
+            <div id="container">
+                <h3>Interactive Page</h3>
+                <iframe src="" title="Interactive Page" id="iframe"></iframe>
+                <div class="control_overlay">
+                    <a id="download_project" title="Download project as .zip"><i class="fa-solid fa-download"></i></a>
+                    <a id="open_project" title="Open project in new tab"><i class="fa-solid fa-magnifying-glass"></i></a>
+                    <a id="copy_project_url" title="Copy project url to clipboard"><i class="fa-solid fa-copy"></i></a>
+                </div>
+            </div>  
+        </div>
+    </div>
+    <script>
+        let project_name = 'cat';
+    </script>
+    <script src="{{ url_for('static', filename='page.js') }}"></script>
+    <script src="{{ url_for('static', filename='chat.js') }}"></script>
+</body>
+</html>
