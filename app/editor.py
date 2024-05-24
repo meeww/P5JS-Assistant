@@ -15,7 +15,7 @@ def serve_editor(project_name):
     if project_name not in (user.projects or '').split(','):
         return jsonify({'error': 'Unauthorized access'}), 403
 
-    project_path = os.path.join('../projects', str(user_id), project_name, 'src')
+    project_path = os.path.join('projects', str(user_id), project_name, 'src')
     start_monitoring(project_path)  # Start monitoring the project path
 
     return render_template('editor/index.html', project_name=project_name, user_id=user_id)

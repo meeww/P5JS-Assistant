@@ -1,4 +1,5 @@
-from flask import Blueprint, session, request, jsonify, send_from_directory
+from flask import Blueprint, jsonify, send_file, session, current_app, request, send_from_directory
+import os
 from app.models import User
 from app import db
 from app.auth import login_required
@@ -48,18 +49,29 @@ def serve_project_file(user_id, project_name, filename):
     return send_from_directory(project_path, filename)
 
 
-@project_bp.route('/projects/<int:user_id>/<project_name>/outputs/<filename>')
+
+@project_bp.route('/projects/<user_id>/<project_name>/outputs/<path:filename>')
 @login_required
 def serve_output_file(user_id, project_name, filename):
-    user = User.query.get(user_id)
-    if project_name not in (user.projects or '').split(','):
+    # Ensure user_id matches the session user_id
+    if user_id != str(session['user_id']):
         return jsonify({'error': 'Unauthorized access'}), 403
 
-    output_path = os.path.join('projects', str(user_id), project_name, 'outputs')
-    full_output_path = os.path.join(output_path, filename)
-    
-    if not os.path.exists(full_output_path):
+    output_path = os.path.join(current_app.root_path, 'projects', user_id, project_name, 'outputs')
+    full_file_path = os.path.join(output_path, filename)
+    # remove "app\"
+    full_file_path = full_file_path.replace("app\\", "")
+
+    # Print current working directory and paths
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Trying to serve output file from: {full_file_path}")
+
+    # Verify the file exists
+    if not os.path.exists(full_file_path):
+        print(f"File not found at: {full_file_path}")
         return jsonify({'error': 'File not found'}), 404
+
+    # Ensure Flask serves the correct file
     return send_from_directory(output_path, filename)
 
 @project_bp.route('/get_files', methods=['POST'])
@@ -144,29 +156,43 @@ def request_file():
     try:
         data = request.get_json()
         project_name = data['project']
-        file = data['file']
+        file_path = data['file']
         user_id = session['user_id']
-        
         user = User.query.get(user_id)
+
         if project_name not in (user.projects or '').split(','):
             return jsonify({'error': 'Unauthorized access'}), 403
 
-        return jsonify(get_file(user_id, project_name, file))
-    except KeyError as e:
-        return jsonify({'error': str(e)}), 400
+        file_full_path = os.path.join('projects', str(user_id), project_name, 'src', file_path)
+        print(f"Getting file: {file_full_path}")
+        
+        if not os.path.exists(file_full_path):
+            return jsonify({'error': 'File not found'}), 404
+        
+        with open(file_full_path, 'r') as file:
+            content = file.read()
+
+        return jsonify({'content': content})
     except Exception as e:
+        print(f"Error getting file: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @project_bp.route('/execute', methods=['POST'])
 @login_required
-async def request_execute():
+def request_execute():
     data = request.get_json()
     project_name = data['project']
     user_id = session['user_id']
     output = data['output']  # 'log' and/or 'image' and/or 'video'
     duration = data['duration']
-    result = await execute_project(project_name, user_id, outputs=output, duration=duration)
-    return jsonify(result)
+    
+    user = User.query.get(user_id)
+    if project_name not in (user.projects or '').split(','):
+        return jsonify({'error': 'Unauthorized access'}), 403
+    
+    output_files = execute_project(project_name, user_id, output, duration)
+    return jsonify(output_files)
+
 
 @project_bp.route('/upload_file', methods=['POST'])
 @login_required

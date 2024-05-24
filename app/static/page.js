@@ -207,6 +207,11 @@ async function fetchLogs() {
 }
 
 function getFile(filename) {
+
+    // if filename starts with project_name, remove it
+    if (filename.startsWith(project_name)){
+        filename = filename.substring(project_name.length + 1);
+    }
     console.log(filename);
     fetch('/get_file', {
         method: 'POST',
@@ -217,7 +222,10 @@ function getFile(filename) {
     })
     .then(response => response.json())
     .then(data => {
-        console.log(data);
+        if (data.error) {
+            console.error('Error getting file:', data.error);
+            return;
+        }
         let textarea = document.getElementById("code");
         textarea.value = data['content'];
         original_content = data['content'];
@@ -235,6 +243,9 @@ function getFile(filename) {
 function compareContent() {
     let newcode = document.getElementById("code").value;
     let oldcode = original_content;
+
+    console.log(newcode);
+    console.log(oldcode);
 
     const diff = Diff.diffChars(oldcode, newcode);
     const display = document.getElementById('diff-output');
@@ -293,11 +304,15 @@ async function getLogs(){
 
 function updateLog(logs){
     try {
+
         chat_log = [];
         for (line of logs){
             chat_log.push(line);
+   
         }
 
+
+        
 
         log.scrollTop = log.scrollBottom;
         log.style.display = "block";
@@ -324,7 +339,6 @@ function updateVideo(data) {
     let parent = video.parentElement;
     showControlOverlay(parent);
 }
-
 function updateIFrame(project_name) {
     let iframe = document.getElementById("iframe");
     
@@ -384,40 +398,32 @@ document.getElementById('form').addEventListener('submit', function(event) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({project : project_name, output: outputs, duration: 1})
+        body: JSON.stringify({project: project_name, output: outputs, duration: 1})
     })
     .then(response => response.json())
     .then(data => {
-        // hide the spinner
+        if (data.error) {
+            console.error('Execution error:', data.error);
+            return;
+        }
+    
+        // Hide the spinner
         document.getElementById('spinner').style.display = "none";
         // Handle the response data
-        if(data['log']) {
-            // load the logs from the static/logs.db file
-            try{
-                fetch('projects/' + project_name + '/logs.db')
-                .then(response => response.text())
-                .then(data => {
-                    getLogs();
-                });
-            }
-
-            catch (error){
-                console.error('Error getting logs:', error);
-            }
-
+        if(data.log) {
+            getLogs();
         }
-        if(data['image']) {
+        if(data.image) {
             updateImage(data);
         }
-        if(data['video']) {
+        if(data.video) {
             updateVideo(data);
         }
-        if(data['url']) {
+        if(data.url) {
             updateIFrame(project_name);
         }
-
-        
-    });
+    })
+    .catch(error => console.error('Error executing project:', error));
     
 });
 console.log("Page.js loaded!")

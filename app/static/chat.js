@@ -3,14 +3,15 @@ const itemHeight = 35; // height of each log line in pixels
 const buffer = 0; // number of extra items to render above and below the viewport
 
 function cleanMessage(message) {
-    message = message[2]
-    message = message.split(" ")
-    message.shift()
-    message.shift()
-    message = message.join(" ")
-    message = message.replace(/"/g, "")
-    return message
+    console.log(message);
+    content = message["message"];
+    console.log(content);
+    // remove first two words
+    content = content.split(" ").slice(2).join(" ");
+    console.log(content);
+    return content;
 }
+
 
 function renderVirtualScroll() {
     const containerHeight = logContainer.clientHeight;
@@ -31,21 +32,7 @@ function renderVirtualScroll() {
         div.style.height = `${itemHeight}px`;
         div.textContent = cleanMessage(line)
 
-        // Stylize the log line based on the log level
-        if(line.includes("SEVERE") || line.includes("ERROR") || line.includes("FATAL") || line.includes("CRITICAL")){
-            // add error class
-            div.className = "error";
-            hasError = true;
-            
-        }
-        else if(line.includes("WARNING")){
-            // add warning class
-            div.className = "warning";
-        }
-        else if(line.includes("INFO")){
-            // add info class
-            div.className = "info";
-        }
+
 
         // set hover text
         div.title = line;

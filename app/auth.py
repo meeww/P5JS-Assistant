@@ -1,5 +1,6 @@
 from flask import Blueprint, redirect, url_for, session, request, jsonify, render_template
 from flask_oauthlib.client import OAuth
+from urllib.parse import quote_plus as url_quote
 from .models import User, db
 import os
 
