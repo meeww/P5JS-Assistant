@@ -133,15 +133,15 @@ def get_directory_structure(dir_path):
     return structure
 
 def get_files(project_name):
-    print("hi")
     project_dir = f'./projects/{project_name}/src/'
     directory_structure = get_directory_structure(project_dir)
     print(directory_structure)
     return directory_structure
 
-def get_file(project_name, file):
-    project_dir = f'./projects/{project_name}/src/'
+def get_file(user_id, project_name, file):
+    project_dir = f'./projects/' + str(user_id) + '/' + project_name + '/src/'
     file_path = os.path.join(project_dir, file)
+    print(file_path)
 
     if not os.path.isfile(file_path):
         return {'error': 'File not found'}, 404
@@ -151,8 +151,8 @@ def get_file(project_name, file):
 
     return {'content': content}
 
-def upload_file(project_name, file, content):
-    project_dir = f'./projects/{project_name}/src/'
+def upload_file(project_name, user_id, file, content):
+    project_dir = f'./projects/{user_id}/{project_name}/src/'
     file_path = os.path.join(project_dir, file)
 
     with open(file_path, 'w') as f:
@@ -165,8 +165,8 @@ def download_project(project_name):
     shutil.make_archive(base_dir + 'project', 'zip', base_dir)
     return base_dir + 'project.zip'
 
-async def execute_project(project_name, outputs=['log'], duration=1):
-    base_dir = f'./projects/{project_name}/'
+async def execute_project(project_name, user_id, outputs=['log'], duration=1):
+    base_dir = f'./projects/' + str(user_id) + '/' + project_name + '/'
     project_dir = base_dir + 'src/'
     outputs_dir = base_dir + 'outputs/'
 
@@ -261,3 +261,34 @@ async def execute_project(project_name, outputs=['log'], duration=1):
 
 
     
+def delete_file(project_name, user_id, file):
+
+    file_path = f'./projects/' + str(user_id) + '/' + project_name + '/src/' + file
+    if not os.path.exists(file_path):
+        return {'error': 'File not found'}, 404
+
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+    elif os.path.isdir(file_path):
+        shutil.rmtree(file_path)
+    else:
+        return {'error': 'Invalid path'}, 400
+
+    return {'success': 'File or directory deleted'}
+
+def create_file(project_name, user_id, file_path, content=''):
+    full_path = os.path.join('projects', str(user_id), project_name, 'src', file_path)
+    if os.path.exists(full_path):
+        return {'error': 'File already exists'}, 400
+
+    if file_path.endswith('/'):
+        # Ensure the directory exists
+        os.makedirs(full_path, exist_ok=True)
+    else:
+        # Ensure the parent directory exists
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        # Create the file
+        with open(full_path, 'w') as f:
+            f.write(content)  # Write the specified content or an empty string
+
+    return {'success': 'File created'}

@@ -1,6 +1,10 @@
 let chat_log = [];
 let files = []
 let current_file = "";
+let original_content = "";
+
+
+
 
 function hideElements(ids){
     ids.forEach(id => {
@@ -16,62 +20,190 @@ function hideElements(ids){
     });
 }
 
+
 function updateDirectory(structure, parentPath = '') {
     const container = document.getElementById('directory_list');
     container.innerHTML = ''; // Clear any existing content
 
-    // Recursive function to create the list elements
-    function createList(items, currentPath) {
+    // append the project name to the top of the list
+    structure = { [project_name]: structure };
+
+    function createList(items, currentPath = '', depth = 0) {
         const ul = document.createElement('ul');
 
-        items.forEach(item => {
+        for (const key in items) {
             const li = document.createElement('li');
+            const buttonContainer = document.createElement('div');
+            buttonContainer.classList.add('button-container');
+            const deleteButton = document.createElement('button');
+            deleteButton.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            deleteButton.classList.add('delete-button');
+            deleteButton.title = 'Delete';
 
-            if (typeof item === 'string') {
-                li.textContent = item;
+            const label = document.createElement('label');
+            // if key is a directory, append a '/' to the end
+            if (typeof items[key] !== 'string') {
+                label.textContent = key + '/';
+                const newFileButton = document.createElement('button');
+                newFileButton.innerHTML = '<i class="fas fa-plus"></i>';
+                newFileButton.classList.add('new-file-button');
+                newFileButton.title = 'New File';
+                newFileButton.addEventListener('click', () => {
+                    const newFileName = prompt('Enter the name of the new file:', 'new_file.txt');
+                    if (newFileName) {
+                        console.log(newFileName, key);
+                        const newFilePath = key + '/' + newFileName;
+                        fetch('/create_file', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ project_name: project_name, file: newFilePath })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('New file created successfully');
+                                // Reload the directory structure after creating the new file
+                                getFiles();
+                            } else {
+                                alert('Error creating new file: ' + data.error);
+                            }
+                        })
+                        .catch(error => console.error('Error creating new file:', error));
+                    }
+                }
+                );
+                buttonContainer.appendChild(newFileButton);
+                
+
+            }
+            else{
+                label.textContent = key;
+            }
+            label.htmlFor = key;
+            label.style.marginLeft = `${depth * 20}px`;
+            label.style.width = `calc(100% - ${depth * 20}px)`;
+
+            const fullPath = currentPath ? `${currentPath}/${key}` : key;
+
+           
+            li.appendChild(label);
+            buttonContainer.appendChild(deleteButton);
+            label.appendChild(buttonContainer);
+            if (typeof items[key] === 'string') {
                 li.classList.add('file');
-                const filePath = currentPath ? `${currentPath}/${item}` : item;
-                li.addEventListener('click', () => getFile(filePath));
-            } else if (typeof item === 'object') {
-                const key = Object.keys(item)[0];
-                li.textContent = `${key}/`;
+                li.addEventListener('click', () => getFile(fullPath));
+                deleteButton.addEventListener('click', (event) => {
+                    event.stopPropagation(); // Prevent triggering the file click event
+                    deleteFile(fullPath);
+                });
+            } else {
                 li.classList.add('directory');
-                li.appendChild(createList(item[key], currentPath ? `${currentPath}/${key}` : key));
+                const nestedUl = createList(items[key], fullPath, depth + 1);
+                li.appendChild(nestedUl);
+                deleteButton.addEventListener('click', (event) => {
+                    event.stopPropagation(); // Prevent triggering the directory click event
+                    deleteFile(fullPath);
+                });
             }
 
             ul.appendChild(li);
-        });
+        }
 
         return ul;
     }
 
-    // Create and append the directory structure to the container
-    const directoryList = createList(structure, parentPath);
+    const directoryList = createList(structure);
     container.appendChild(directoryList);
 }
 
 
-function getFiles(){
-    fetch('/get_files', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ project: project_name })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log(data);
-        files = data;
-        updateDirectory(data);  
+function deleteFile(filePath) {
+    if (confirm(`Are you sure you want to delete ${filePath}?`)) {
+        fetch('/delete_file', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ project_name: project_name, file: filePath })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('File deleted successfully');
+                // Reload the directory structure after deletion
+                getFiles();
+                
+            } else {
+                alert('Error deleting file: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Error deleting file:', error));
+    }
+}
 
-        file = files[0];
-        getFile(file);
-        
-        
-        
-    })
-    .catch(error => console.error('Error getting files:', error));
+function findFirstFile(structure, path = '') {
+    for (const key in structure) {
+        const newPath = path ? `${path}/${key}` : key;
+        if (typeof structure[key] === 'string') {
+            return newPath;
+        } else {
+            const result = findFirstFile(structure[key], newPath);
+            if (result) return result;
+        }
+    }
+    return null;
+}
+
+
+async function getFiles() {
+    try {
+        const response = await fetch('/get_files', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ project_name: project_name })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        updateDirectory(data);
+    } catch (error) {
+        console.error('Error getting files:', error);
+    }
+}
+async function fetchLogs() {
+    try {
+        const response = await fetch('/logs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ project_name: project_name })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        updateLog(data);
+    } catch (error) {
+        console.error('Error fetching logs:', error);
+    }
 }
 
 function getFile(filename) {
@@ -88,76 +220,122 @@ function getFile(filename) {
         console.log(data);
         let textarea = document.getElementById("code");
         textarea.value = data['content'];
+        original_content = data['content'];
+
         current_file = filename;
+
+        // show the control overlay
+        let parent = textarea.parentElement;
+        showControlOverlay(parent);
+        compareContent();
     })
     .catch(error => console.error('Error getting file:', error));
 }
 
-function getLogs(){
-    fetch('/logs', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ start: 0, end: 999999999999999999})
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log(data);
-        updateLog(data);
-    })
-    .catch(error => {
-        console.error('Error fetching logs:', error);
+function compareContent() {
+    let newcode = document.getElementById("code").value;
+    let oldcode = original_content;
+
+    const diff = Diff.diffChars(oldcode, newcode);
+    const display = document.getElementById('diff-output');
+    
+    // Clear the previous content
+    display.innerHTML = '';
+
+    // Concatenate the differences into a single string with HTML styling
+
+    
+    let diffHtml = '';
+    diff.forEach((part) => {
+        // green for additions, red for deletions, grey for common parts
+        const color = part.added ? 'lime' : part.removed ? 'red' : 'var(--accent-color)'
+        const text = part.value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        diffHtml += `<span style="color: ${color}">${text}</span>`;
     });
+
+    // Create a pre element to preserve whitespace and formatting
+    const pre = document.createElement('pre');
+    pre.innerHTML = diffHtml;
+
+    // Append the pre element to the display
+    display.appendChild(pre);
+
+    // Show the diff output
+    display.style.display = 'block';
+}
+
+
+
+async function getLogs(){
+    try {
+        const response = await fetch('/logs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ project_name: project_name })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        updateLog(data);
+    } catch (error) {
+        console.error('Error fetching logs:', error);
+    }
 }
 
 function updateLog(logs){
+    try {
+        chat_log = [];
+        for (line of logs){
+            chat_log.push(line);
+        }
 
-    chat_log = [];
-    for (line of logs){
-        chat_log.push(line);
+
+        log.scrollTop = log.scrollBottom;
+        log.style.display = "block";
+        let parent = log.parentElement;
+        showControlOverlay(parent);
+        renderVirtualScroll();
+    } catch (error) {
+        console.error('Error updating log:', error);
     }
-
-
-    log.scrollTop = log.scrollBottom;
-    log.style.display = "block";
-    let parent = log.parentElement;
-    showControlOverlay(parent);
-    renderVirtualScroll();
 }
 
-function updateImage(data){
-
+function updateImage(data) {
     let image = document.getElementById("image");
-    image.src = '/projects/'+project_name+'/outputs/'+data['image']+'?t='+new Date().getTime();
+    image.src = `/projects/${user_id}/${project_name}/outputs/${data['image']}?t=${new Date().getTime()}`;
     image.style.display = "block";
     let parent = image.parentElement;
     showControlOverlay(parent);
 }
 
-function updateVideo(data){
+function updateVideo(data) {
     let video = document.getElementById("video");
-    video.src = '/projects/'+project_name+'/outputs/'+data['video']+'?t='+new Date().getTime();
+    video.src = `/projects/${user_id}/${project_name}/outputs/${data['video']}?t=${new Date().getTime()}`;
     video.style.display = "block";
     let parent = video.parentElement;
     showControlOverlay(parent);
 }
 
-
 function updateIFrame(project_name) {
     let iframe = document.getElementById("iframe");
-
     
     // Update the iframe src to force reload and bypass caching
-    iframe.src = '/projects/'+project_name+'/src/index.html?t='+new Date().getTime();
+    iframe.src = `/projects/${user_id}/${project_name}/src/index.html?t=${new Date().getTime()}`;
     iframe.style.display = "block";
 
     // Show the control overlay
     let parent = iframe.parentElement;
     showControlOverlay(parent);
-    
 }
-
 
 
 
@@ -418,7 +596,7 @@ document.getElementById('download_file').addEventListener('click', function(even
     let textarea = document.getElementById("code");
     let text = textarea.value;
     let link = document.createElement('a');
-    let filename = current_file.split('/').pop();
+    let filename = current_file.split("\\").pop();
     let filetype = filename.split('.').pop();
 
 
@@ -447,21 +625,28 @@ document.getElementById('copy_file').addEventListener('click', function(event) {
 });
 
 document.getElementById('upload_file').addEventListener('click', function(event) {
-    // upload the file to the server
+    // Upload the file to the server
     let textarea = document.getElementById("code");
     let text = textarea.value;
 
+    // Ensure project_name and current_file are defined
 
     fetch('/upload_file', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ project: project_name, file: current_file, content: text })
+        body: JSON.stringify({ project_name: project_name, file: current_file, content: text })
     })
     .then(response => response.json())
     .then(data => {
         console.log(data);
     })
     .catch(error => console.error('Error uploading file:', error));
+});
+
+const socket = io.connect('http://' + document.domain + ':' + location.port);
+socket.on('file_change', function(data) {
+    console.log(data.message);
+    getFiles();  // Refresh the file list
 });
